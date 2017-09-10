@@ -1,6 +1,7 @@
+#./linux make executable ex=ex1
+
 CC=/usr/bin/gcc
 CFLAGS=-fopenmp
-#./linux make executable ex=ex1
 
 .PHONY: output presentation
 

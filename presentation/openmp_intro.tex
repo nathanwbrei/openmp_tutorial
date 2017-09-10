@@ -19,7 +19,7 @@
 \end{frame}
 
 \begin{frame}[fragile]
-  \frametitle{OpenMP Parallel Regions}
+  \frametitle{Launching a team of threads --- Parallel Regions}
   \begin{columns}[t]%[onlytextwidth]
     \begin{column}{0.65\textwidth}
       \inputminted{c}{src/ex1.c}
@@ -27,19 +27,26 @@
     \pause
     \begin{column}{0.4\textwidth}
       \inputminted{text}{output/ex1.txt}
+      \begin{minted}[gobble=8]{text}
+        Output gets
+        Way weirder than what
+        is shown just because
+        CPUs are complicated
+      \end{minted}
     \end{column}
   \end{columns}
   \pause
   \begin{itemize}
   \item \emph{Fork-join execution model}
-  \item Print statements are interleaved in random order
+  \item Print statements are interleaved nondeterministically
+  \item Number of threads is chosen automatically, or specified by \mintinline{text}{$OMP_NUM_THREADS}, \mintinline{c}{omp_set_num_threads(int t)}, \mintinline{c}{#pragma omp parallel num_threads(2)}
   \end{itemize}
 \end{frame}
 
 
 
 \begin{frame}[fragile]
-  \frametitle{OpenMP Hello World}
+  \frametitle{OpenMP Sections}
   \begin{columns}[t]%[onlytextwidth]
     \begin{column}{0.65\textwidth}
       \inputminted{c}{src/ex1.c}
