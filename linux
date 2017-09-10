@@ -1,0 +1,4 @@
+#!/bin/bash
+docker run --security-opt seccomp=unconfined -v ~/src/omp:/src -e OMP_NUM_THREADS=4 -it thesis_dev_env $@
+
+
