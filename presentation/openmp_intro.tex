@@ -1,43 +1,75 @@
 \documentclass[handout]{beamer}
 
-%\let\Tiny\tiny% http://tex.stackexchange.com/a/94159/5764
+\usecolortheme{beaver}
 \setbeamertemplate{navigation symbols}{}
 
-%\usepackage[outputdir=build]{minted}
-\definecolor{subtlegray}{rgb}{0.92,0.92,0.92}
-
+\usepackage[outputdir=build]{minted}
 \PassOptionsToPackage{outputdir=build}{minted}
+
 \usepackage{tcolorbox}
 \tcbuselibrary{minted,skins}
 
-\newtcblisting{ccode}[1]{
-    listing engine=minted,
-    colback=subtlegray,
-    %colframe=black!70,
-    listing only,
-    minted style=default,
-    minted language=c,
-    minted options={fontsize=\footnotesize,#1}
+% Patch to fix https://github.com/T-F-S/tcolorbox/issues/12
+\makeatletter
+\def\tcb@minted@input@listing#1#2#3#4{%
+  \edef\temp@a{#4}%
+  \ifx\temp@a\@empty%
+  \else%
+    \toks@=\expandafter{#4}%
+    \edef\tcb@temp{\noexpand\usemintedstyle{\the\toks@}}%
+    \tcb@temp%
+  \fi%
+  \toks@=\expandafter{#1}%
+  \edef\tcb@temp{\noexpand\inputminted[\the\toks@]}%
+  \IfFileExists{\minted@outputdir#3}%
+    {\tcb@temp{#2}{\minted@outputdir#3}}%
+    {\tcb@temp{#2}{#3}}%
+}
+\makeatother
+
+\newtcblisting{ccode}[2][]{%
+  listing engine=minted,
+  minted language=#2,
+  minted options={breaklines,breakanywhere,fontsize=\scriptsize,gobble=8},
+  listing only,
+  before skip=0pt,
+  after skip=8pt,
+  left skip=0pt,
+  right skip=0pt,
+  size=fbox,
+  sharp corners,
+  %colframe=white!75!black,
+  colframe=white,
+  boxrule=0pt,
+  frame hidden,
+  #1
 }
 
-\newtcbinputlisting{\tcbcode}[2]{%
-    listing engine=minted,
-    colback=subtlegray,
-    %colframe=black!70,
-    listing only,
-    minted style=default,
-    minted language=#1,
-    minted options={fontsize=\footnotesize},
-    listing file={#2}
+
+\newtcbinputlisting[]{\inputcode}[3][]{%
+  listing engine=minted,
+  minted language=#2,
+  minted options={breaklines,breakanywhere,fontsize=\scriptsize},
+  listing file={#3},
+  listing only,
+  size=fbox,
+  before skip=0pt,
+  after skip=10pt,
+  left skip=0pt,
+  right skip=0pt,
+  sharp corners,
+  %colframe=white!75!black,
+  colframe=white,
+  boxrule=0pt,
+  frame hidden,
+  #1
 }
 
-
-\definecolor{bg}{rgb}{0.85,0.85,0.85}
 
 \title{Introduction to OpenMP}
 \subtitle{Ferienakademie 2017}
 \author{Nathan Brei}
-\institute{}
+\institute{Technical University of Munich}
 \date\today
 
 \begin{document}
@@ -49,12 +81,13 @@
   \frametitle{Launching a team of threads --- Parallel Regions}
   \begin{columns}[t]%[onlytextwidth]
     \begin{column}{0.65\textwidth}
-      \tcbcode{c}{src/ex1.c}
+      \inputcode[]{c}{src/ex1.c}
     \end{column}
     \pause
     \begin{column}{0.4\textwidth}
-      \tcbcode{text}{output/ex1.txt}
-      \begin{ccode}[gobble=8]{text}
+      \inputcode[]{text}{output/ex1.txt}
+      \begin{ccode}[]
+        {c}
         Output gets
         Way weirder than what
         is shown just because
@@ -66,6 +99,7 @@
   \begin{itemize}
   \item \emph{Fork-join execution model}
   \item Print statements are interleaved nondeterministically
+  \item Number of threads is chosen automatically, or specified by \mintinline{text}{$OMP_NUM_THREADS}, \mintinline{c}{omp_set_num_threads(int t)}, \mintinline{c}{#pragma omp parallel num_threads(2)}
   \end{itemize}
 \end{frame}
 
