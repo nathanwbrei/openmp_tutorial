@@ -3,9 +3,36 @@
 %\let\Tiny\tiny% http://tex.stackexchange.com/a/94159/5764
 \setbeamertemplate{navigation symbols}{}
 
-\usepackage[outputdir=build]{minted}
-\definecolor{almostnogray}{rgb}{0.92,0.92,0.92}
-\setminted{breaklines=true,breakanywhere=true,bgcolor=almostnogray,fontsize=\scriptsize}
+%\usepackage[outputdir=build]{minted}
+\definecolor{subtlegray}{rgb}{0.92,0.92,0.92}
+
+\PassOptionsToPackage{outputdir=build}{minted}
+\usepackage{tcolorbox}
+\tcbuselibrary{minted,skins}
+
+\newtcblisting{ccode}[1]{
+    listing engine=minted,
+    colback=subtlegray,
+    %colframe=black!70,
+    listing only,
+    minted style=default,
+    minted language=c,
+    minted options={fontsize=\footnotesize,#1}
+}
+
+\newtcbinputlisting{\tcbcode}[2]{%
+    listing engine=minted,
+    colback=subtlegray,
+    %colframe=black!70,
+    listing only,
+    minted style=default,
+    minted language=#1,
+    minted options={fontsize=\footnotesize},
+    listing file={#2}
+}
+
+
+\definecolor{bg}{rgb}{0.85,0.85,0.85}
 
 \title{Introduction to OpenMP}
 \subtitle{Ferienakademie 2017}
@@ -22,79 +49,25 @@
   \frametitle{Launching a team of threads --- Parallel Regions}
   \begin{columns}[t]%[onlytextwidth]
     \begin{column}{0.65\textwidth}
-      \inputminted{c}{src/ex1.c}
+      \tcbcode{c}{src/ex1.c}
     \end{column}
     \pause
     \begin{column}{0.4\textwidth}
-      \inputminted{text}{output/ex1.txt}
-      \begin{minted}[gobble=8]{text}
+      \tcbcode{text}{output/ex1.txt}
+      \begin{ccode}[gobble=8]{text}
         Output gets
         Way weirder than what
         is shown just because
         CPUs are complicated
-      \end{minted}
+      \end{ccode}
     \end{column}
   \end{columns}
   \pause
   \begin{itemize}
   \item \emph{Fork-join execution model}
   \item Print statements are interleaved nondeterministically
-  \item Number of threads is chosen automatically, or specified by \mintinline{text}{$OMP_NUM_THREADS}, \mintinline{c}{omp_set_num_threads(int t)}, \mintinline{c}{#pragma omp parallel num_threads(2)}
   \end{itemize}
 \end{frame}
 
 
-
-\begin{frame}[fragile]
-  \frametitle{OpenMP Sections}
-  \begin{columns}[t]%[onlytextwidth]
-    \begin{column}{0.65\textwidth}
-      \inputminted{c}{src/ex1.c}
-    \end{column}
-    \pause
-    \begin{column}{0.4\textwidth}
-      \begin{minted}[gobble=8]{text}
-        Hello there oh weirdo
-        Why is everything so strange
-        Let's eat more food.
-        Good night sweet prince.
-      \end{minted}
-    \end{column}
-  \end{columns}
-  \pause
-  \begin{block}{Observations}
-    \begin{itemize}
-    \item \emph{Fork-join execution model}
-    \item Print statements output in a random order
-    \end{itemize}
-  \end{block}
-\end{frame}
-\begin{frame}
-  \frametitle{This is a frame title}
-  \begin{columns}[onlytextwidth]
-    \begin{column}{0.4\textwidth}
-      \centering
-      %\rule{100pt}{150pt}% Place your graphic here
-      Here is some text. I hope this works. Here is some more text.
-    \end{column}
-    \begin{column}{0.2\textwidth}
-      \centering
-      \rule{40pt}{150pt}% Place your graphic here
-    \end{column}
-    \begin{column}{0.4\textwidth}
-    Here is some regular text in a column. And there is an equation
-    \[
-      f(x)=ax^2+bx+c
-    \]
-    Here is some more text.
-    \end{column}
-​  \end{columns}
-  \begin{block}{Takeaways}
-    \begin{itemize}
-    \item Nothing is as it seems, and everything is disappointing.
-    \item Don't sleep too late otherwise your life ends
-    \end{itemize}
-  \end{block}
-
-\end{frame}
 \end{document}
