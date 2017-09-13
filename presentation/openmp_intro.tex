@@ -48,7 +48,7 @@
 \newtcbinputlisting[]{\inputcode}[3][]{%
   listing engine=minted,
   minted language=#2,
-  minted options={breaklines,breakanywhere,fontsize=\scriptsize},
+  minted options={breaklines,breakanywhere,fontsize=\scriptsize,#1},
   listing file={#3},
   listing only,
   size=fbox,
@@ -60,8 +60,7 @@
   %colframe=white!75!black,
   colframe=white,
   boxrule=0pt,
-  frame hidden,
-  #1
+  frame hidden
 }
 
 
@@ -207,6 +206,47 @@
   \end{itemize}
 
 \end{frame}
+
+
+
+\begin{frame}[fragile]
+  \frametitle{Problem: Race conditions}
+  Some race conditions are not obvious from the C code, but emerge when compiled to assembly/microcode. \emph{Every} variable access in C requires memory \texttt{load} or \texttt{store} operations unless the compiler can prove otherwise. 
+  
+  \begin{columns}[t]%[onlytextwidth]
+    \begin{column}{0.43\textwidth}
+      \inputcode[firstline=5,lastline=22,gobble=2]{c}{src/ex4.c}
+    \end{column}
+
+    \begin{column}{0.43\textwidth}
+      \inputcode[firstline=5,lastline=22,gobble=2]{c}{src/ex5.c}
+    \end{column}
+    
+    \begin{column}{0.3\textwidth}
+      \begin{ccode}[after skip=4pt]
+        {text}
+        load (total) -> a
+          load (total) -> c
+        add 1, a -> b
+          add 2, c -> d
+        store b -> (total)
+          store d -> (total)
+
+          ==> (total == 2)\end{ccode}
+      \begin{ccode}[]
+        {text}
+        load (total) -> a
+        add 1, a -> b
+          load (total) -> c
+          add 2, c -> d
+          store d -> (total)
+        store b -> (total)
+        
+          ==> (total == 1)\end{ccode}
+    \end{column}
+  \end{columns}
+\end{frame}
+
 
 
 \begin{frame}[fragile]
