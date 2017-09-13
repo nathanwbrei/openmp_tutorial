@@ -1,11 +1,10 @@
 \documentclass[handout]{beamer}
-
 \usecolortheme{beaver}
 \setbeamertemplate{navigation symbols}{}
 
-\usepackage[outputdir=build]{minted}
-\PassOptionsToPackage{outputdir=build}{minted}
+\usepackage{tikz}
 
+\usepackage[outputdir=build]{minted}
 \usepackage{tcolorbox}
 \tcbuselibrary{minted,skins}
 
@@ -77,6 +76,37 @@
   \titlepage
 \end{frame}
 
+\begin{frame}
+  \frametitle{Register Machine Model}
+  \begin{center}
+    \begin{tikzpicture}[scale=0.5]
+      \draw[thick,fill=lightgray] (0,0) rectangle (8,10);
+
+      \draw[thick] (2,1) -- (2,9);
+      \draw[thick] (2,1) -- (8,1);
+      \draw[thick] (2,2) -- (8,2);
+      \draw[thick] (2,3) -- (8,3);
+      \draw[thick] (2,4) -- (8,4);
+      \draw[thick] (2,5) -- (8,5);
+      \draw[thick] (2,6) -- (8,6);
+      \draw[thick] (2,7) -- (8,7);
+      \draw[thick] (2,8) -- (8,8);
+      \draw[thick] (2,9) -- (8,9);
+
+      \node[above left] at (2,8) {0};
+      \node[above left] at (2,7) {4};
+      \node[above left] at (2,6) {8};
+      \node[above left] at (2,5) {12};
+      \node[above left] at (2,4) {16};
+      \node[above left] at (2,3) {20};
+      \node[above left] at (2,2) {24};
+      \node[above left] at (2,1) {\vdots};
+      %\draw[help lines] (0,0) grid (10,10);
+    \end{tikzpicture}
+  \end{center}
+\end{frame}
+
+
 \begin{frame}[fragile]
   \frametitle{Launching a team of threads --- Parallel Regions}
   \begin{columns}[t]%[onlytextwidth]
@@ -87,11 +117,12 @@
     \begin{column}{0.4\textwidth}
       \inputcode[]{text}{output/ex1.txt}
       \begin{ccode}[]
-        {c}
-        Output gets
-        Way weirder than what
-        is shown just because
-        CPUs are complicated
+        {text}
+        About to fork...
+        Hello from thread 2 of 3
+        Hello from thread 0 of 3
+        Hello from thread 1 of 3
+        ...Rejoined.
       \end{ccode}
     \end{column}
   \end{columns}
@@ -103,5 +134,231 @@
   \end{itemize}
 \end{frame}
 
+\begin{frame}[fragile]
+  \frametitle{Assigning code blocks to threads --- Parallel Sections}
+  \begin{columns}[t]%[onlytextwidth]
+    \begin{column}{0.65\textwidth}
+      \inputcode[]{c}{src/ex2.c}
+    \end{column}
+    \pause
+    \begin{column}{0.4\textwidth}
+      \begin{ccode}[]
+        {text}
+        Thread 0, iter 0
+        Thread 0, iter 1
+          Thread 1, iter 0
+        Thread 0, iter 2
+          Thread 1, iter 1
+          Thread 1, iter 2
+          Thread 1, iter 3
+        Thread 0, iter 3\end{ccode}
+      \inputcode[]{text}{output/ex2.txt}
+    \end{column}
+  \end{columns}
+  \pause
+  \begin{itemize}
+  \item Number of parallel sections is fixed at compile time.
+  \item No guarantee how statements get interleaved, or how many threads are actually used!
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Problem: Race conditions}
+  Definition: A class of bug where the program's output depends on the timing of events which are not under the programmer's control.  
+  \begin{columns}[t]%[onlytextwidth]
+    \begin{column}{0.5\textwidth}
+      \begin{ccode}[]{c}
+        int a = 0;
+        int b = 0;
+        #pragma omp parallel sections
+        {
+          #pragma omp section
+          a = 1;
+
+          #pragma omp section
+          b = a;
+        }
+        printf("b = %d\n", b);\end{ccode}
+    \end{column}
+    \pause
+    \begin{column}{0.3\textwidth}
+      \begin{ccode}[]
+        {text}
+        a = 0
+        b = 0
+        a = 1
+        b = a
+          ==> (b == 1)\end{ccode}
+      \begin{ccode}[]
+        {text}
+        a = 0
+        b = 0
+        b = a
+        a = 1
+          ==> (b == 0)\end{ccode}
+    \end{column}
+  \end{columns}
+  \pause
+  \begin{itemize}
+  \item For simple programs, the output often \emph{appears} deterministic.
+  \item However, instruction interleaving is \emph{not} defined by OpenMP.
+  \item It depends on the CPU architecture, operating system, system load, compiler, and code optimization level.
+  \item Race conditions often lie dormant only to materialize when you least want them to.
+  \end{itemize}
+
+\end{frame}
+
+
+\begin{frame}[fragile]
+  \frametitle{Privatizing intermediate variables}
+  \begin{columns}[t]%[onlytextwidth]
+    \begin{column}{0.65\textwidth}
+      \inputcode[]{c}{src/ex1.c}
+    \end{column}
+    \pause
+    \begin{column}{0.4\textwidth}
+      \inputcode[]{text}{output/ex1.txt}
+      \begin{ccode}[]
+        {c}
+        Another example
+        Yet another example
+        PENIS
+        PENIS
+      \end{ccode}
+    \end{column}
+  \end{columns}
+  \pause
+  \begin{itemize}
+  \item Print statements are interleaved nondeterministically
+  \end{itemize}
+\end{frame}
+
+
+\begin{frame}[fragile]
+  \frametitle{Protecting access to shared variables --- Critical and Atomic Sections}
+  \begin{columns}[t]%[onlytextwidth]
+    \begin{column}{0.65\textwidth}
+      \inputcode[]{c}{src/ex1.c}
+    \end{column}
+    \pause
+    \begin{column}{0.4\textwidth}
+      \inputcode[]{text}{output/ex1.txt}
+      \begin{ccode}[]
+        {c}
+        Another example
+        Yet another example
+        PENIS
+        PENIS
+      \end{ccode}
+    \end{column}
+  \end{columns}
+  \pause
+  \begin{itemize}
+  \item Print statements are interleaved nondeterministically
+  \end{itemize}
+\end{frame}
+
+
+
+\begin{frame}[fragile]
+  \frametitle{Enforcing an ordering between threads --- Barriers}
+  \begin{columns}[t]%[onlytextwidth]
+    \begin{column}{0.65\textwidth}
+      \inputcode[]{c}{src/ex1.c}
+    \end{column}
+    \pause
+    \begin{column}{0.4\textwidth}
+      \inputcode[]{text}{output/ex1.txt}
+      \begin{ccode}[]
+        {c}
+        Another example
+        Yet another example
+        PENIS
+        PENIS
+      \end{ccode}
+    \end{column}
+  \end{columns}
+  \pause
+  \begin{itemize}
+  \item Print statements are interleaved nondeterministically
+  \end{itemize}
+\end{frame}
+
+
+\begin{frame}[fragile]
+  \frametitle{Dependency Graphs}
+  \begin{columns}[t]%[onlytextwidth]
+    \begin{column}{0.65\textwidth}
+      \inputcode[]{c}{src/ex1.c}
+    \end{column}
+    \pause
+    \begin{column}{0.4\textwidth}
+      \inputcode[]{text}{output/ex1.txt}
+      \begin{ccode}[]
+        {c}
+        Another example
+        Yet another example
+        PENIS
+        PENIS
+      \end{ccode}
+    \end{column}
+  \end{columns}
+  \pause
+  \begin{itemize}
+  \item Print statements are interleaved nondeterministically
+  \end{itemize}
+\end{frame}
+
+
+
+\begin{frame}[fragile]
+  \frametitle{Parallelizing For Loops}
+  \begin{columns}[t]%[onlytextwidth]
+    \begin{column}{0.65\textwidth}
+      \inputcode[]{c}{src/ex1.c}
+    \end{column}
+    \pause
+    \begin{column}{0.4\textwidth}
+      \inputcode[]{text}{output/ex1.txt}
+      \begin{ccode}[]
+        {c}
+        Another example
+        Yet another example
+        PENIS
+        PENIS
+      \end{ccode}
+    \end{column}
+  \end{columns}
+  \pause
+  \begin{itemize}
+  \item Print statements are interleaved nondeterministically
+  \end{itemize}
+\end{frame}
+
+
+
+\begin{frame}[fragile]
+  \frametitle{Loop-Carried Dependencies}
+  \begin{columns}[t]%[onlytextwidth]
+    \begin{column}{0.65\textwidth}
+      \inputcode[]{c}{src/ex1.c}
+    \end{column}
+    \pause
+    \begin{column}{0.4\textwidth}
+      \inputcode[]{text}{output/ex1.txt}
+      \begin{ccode}[]
+        {c}
+        Another example
+        Yet another example
+        PENIS
+        PENIS
+      \end{ccode}
+    \end{column}
+  \end{columns}
+  \pause
+  \begin{itemize}
+  \item Print statements are interleaved nondeterministically
+  \end{itemize}
+\end{frame}
 
 \end{document}
