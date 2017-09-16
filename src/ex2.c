@@ -13,7 +13,7 @@ int main(int argc, char** argv) {
     }
     #pragma omp section
     {
-      int n = omp_get_thread_num();
+      int t = omp_get_thread_num();
       for (int i=0; i<4; i++)
-        printf("  Thread %d, iter %d\n",n,i);
+        printf("  Thread %d, iter %d\n",t,i);
     }}}

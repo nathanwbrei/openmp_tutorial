@@ -251,9 +251,10 @@
 
 \begin{frame}[fragile]
   \frametitle{Privatizing intermediate variables}
+  The first technique for eliminating race conditions is distinguishing between the variables which \emph{must} be shared and those which can be made local to a thread. These variables should be declared private.
   \begin{columns}[t]%[onlytextwidth]
-    \begin{column}{0.65\textwidth}
-      \inputcode[]{c}{src/ex1.c}
+    \begin{column}{0.4\textwidth}
+      \inputcode[firstline=5,lastline=22,gobble=2]{c}{src/ex4.c}
     \end{column}
     \pause
     \begin{column}{0.4\textwidth}
@@ -269,7 +270,7 @@
   \end{columns}
   \pause
   \begin{itemize}
-  \item Print statements are interleaved nondeterministically
+  \item 
   \end{itemize}
 \end{frame}
 
@@ -294,7 +295,9 @@
   \end{columns}
   \pause
   \begin{itemize}
-  \item Print statements are interleaved nondeterministically
+  \item Mark a region as access only by mutual exclusion
+  \item Underlying idea: threads use a mutex variable to indicate that
+  \item Amdahl's law: (Over) using critical regions hurts scalability 
   \end{itemize}
 \end{frame}
 
@@ -353,25 +356,21 @@
 
 \begin{frame}[fragile]
   \frametitle{Parallelizing For Loops}
+  For numerical code, most of the computation usually happens inside an inner loop, and we wish to distribute the work evenly across an arbitrary number of threads determined at runtime.
   \begin{columns}[t]%[onlytextwidth]
     \begin{column}{0.65\textwidth}
-      \inputcode[]{c}{src/ex1.c}
+      \inputcode[]{c}{src/exfor.c}
     \end{column}
     \pause
     \begin{column}{0.4\textwidth}
-      \inputcode[]{text}{output/ex1.txt}
-      \begin{ccode}[]
-        {c}
-        Another example
-        Yet another example
-        PENIS
-        PENIS
-      \end{ccode}
+      \inputcode[]{text}{output/exfor.txt}
     \end{column}
   \end{columns}
   \pause
   \begin{itemize}
-  \item Print statements are interleaved nondeterministically
+  \item Available scheduling strategies: static, dynamic, guided
+  \item Adjust chunk size in order to increase the parallelism granularity
+  \item  
   \end{itemize}
 \end{frame}
 
@@ -391,14 +390,39 @@
         Another example
         Yet another example
         PENIS
+
+      \end{ccode}
+    \end{column}
+  \end{columns}
+  \pause
+  \begin{itemize}
+  \item Heuristic: Array accesses such as \texttt{A[i]} are good, \texttt{A[i-1]} are bad
+  \item Remove dependencies via loop splitting, alignment, interchange
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Putting everything together: Sum all elements in array}
+  \begin{columns}[t]%[onlytextwidth]
+    \begin{column}{0.65\textwidth}
+      \inputcode[]{c}{src/ex1.c}
+    \end{column}
+    \pause
+    \begin{column}{0.4\textwidth}
+      \inputcode[]{text}{output/ex1.txt}
+      \begin{ccode}[]
+        {c}
+        Another example
+        Yet another example
+        PENIS
         PENIS
       \end{ccode}
     \end{column}
   \end{columns}
   \pause
   \begin{itemize}
-  \item Print statements are interleaved nondeterministically
+  \item Heuristic: Array accesses such as \texttt{A[i]} are good, \texttt{A[i-1]} are bad
+  \item Remove dependencies via loop splitting, alignment, interchange
   \end{itemize}
 \end{frame}
-
 \end{document}
