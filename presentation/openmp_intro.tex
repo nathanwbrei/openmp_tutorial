@@ -1,6 +1,7 @@
 \documentclass[handout]{beamer}
 \usecolortheme{beaver}
 \setbeamertemplate{navigation symbols}{}
+\setbeamercolor{block title}{bg=white!95!black,fg=black}
 
 \usepackage{tikz}
 
@@ -76,35 +77,36 @@
 \end{frame}
 
 \begin{frame}
-  \frametitle{Register Machine Model}
-  \begin{center}
-    \begin{tikzpicture}[scale=0.5]
-      \draw[thick,fill=lightgray] (0,0) rectangle (8,10);
-
-      \draw[thick] (2,1) -- (2,9);
-      \draw[thick] (2,1) -- (8,1);
-      \draw[thick] (2,2) -- (8,2);
-      \draw[thick] (2,3) -- (8,3);
-      \draw[thick] (2,4) -- (8,4);
-      \draw[thick] (2,5) -- (8,5);
-      \draw[thick] (2,6) -- (8,6);
-      \draw[thick] (2,7) -- (8,7);
-      \draw[thick] (2,8) -- (8,8);
-      \draw[thick] (2,9) -- (8,9);
-
-      \node[above left] at (2,8) {0};
-      \node[above left] at (2,7) {4};
-      \node[above left] at (2,6) {8};
-      \node[above left] at (2,5) {12};
-      \node[above left] at (2,4) {16};
-      \node[above left] at (2,3) {20};
-      \node[above left] at (2,2) {24};
-      \node[above left] at (2,1) {\vdots};
-      %\draw[help lines] (0,0) grid (10,10);
-    \end{tikzpicture}
-  \end{center}
+  \frametitle{Parallelism levels}
+  \begin{block}{Distributed-memory parallelism}
+    \begin{description}[Disadvantages]
+    \item[Description] Isolated processes, often running on different machines, communicate by sending messages.
+    \item[Advantages] High scalability
+    \item[Disadvantages] Reliability, communication overhead
+    \item[Examples] MPI, Hadoop, Spark. Akka, Erlang. 
+    \end{description}
+  \end{block}
+  \begin{block}{Shared-memory thread-level parallelism}
+    \begin{description}[Disadvantages]
+    \item[Description] Multiple threads on the same machine. Each thread has its own isolated register space, but they share a memory address space.
+    \item[Advantages] Parallelizing existing code, memory-bound problems
+    \item[Disadvantages] Contains subtleties
+    \item[Examples] Pthreads, Java threads, OpenMP
+    \end{description}
+  \end{block}
 \end{frame}
 
+\begin{frame}
+  \frametitle{Parallelism levels}
+  \begin{block}{Instruction-level parallelism}
+    \begin{description}[Disadvantages]
+    \item[Description] Each CPU core maximizes instruction throughput by pipelining, parallelizing execution units and registers, etc. Shared registers, shared memory.
+    \item[Advantages] Vectorize innermost compute kernels, use memory hierarchy efficiently
+    \item[Disadvantages] Limited scalability, absurdly low-level
+    \item[Examples] Assembly language, \texttt{\#pragma simd}, choosing block sizes very carefully
+    \end{description}
+  \end{block}
+\end{frame}
 
 \begin{frame}[fragile]
   \frametitle{Launching a team of threads --- Parallel Regions}
