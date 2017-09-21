@@ -133,6 +133,7 @@
   \item \emph{Fork-join execution model}
   \item Print statements are interleaved nondeterministically
   \item Number of threads is chosen automatically, or specified by \mintinline{text}{$OMP_NUM_THREADS}, \mintinline{c}{omp_set_num_threads(int t)}, \mintinline{c}{#pragma omp parallel num_threads(2)}
+  \item Threads are synchronized afterward unless \mintinline{text}{nowait} specified.
   \end{itemize}
 \end{frame}
 
@@ -205,7 +206,7 @@
   \item For simple programs, the output often \emph{appears} deterministic.
   \item However, instruction interleaving is \emph{not} defined by OpenMP.
   \item It depends on the CPU architecture, operating system, system load, compiler, and code optimization level.
-  \item Race conditions often lie dormant only to materialize when you least want them to.
+  \item Use Valgrind or ThreadSanitizer to proactively find dormant race conditions.
   \end{itemize}
 
 \end{frame}
@@ -373,7 +374,6 @@
   \begin{itemize}
   \item Available scheduling strategies: static, dynamic, guided
   \item Adjust chunk size in order to increase the parallelism granularity
-  \item  
   \end{itemize}
 \end{frame}
 
@@ -392,7 +392,6 @@
         {c}
         Another example
         Yet another example
-        PENIS
 
       \end{ccode}
     \end{column}
@@ -417,8 +416,6 @@
         {c}
         Another example
         Yet another example
-        PENIS
-        PENIS
       \end{ccode}
     \end{column}
   \end{columns}

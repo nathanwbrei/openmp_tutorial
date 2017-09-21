@@ -13,7 +13,7 @@ int main(int argc, char** argv) {
     {
       for (int i = 0; i < 4; i++) temp += A[i];
       printf("temp=%d\n",temp);
-      #pragma omp critical  // For code blocks
+      #pragma omp critical (c1)  // For code blocks
       sum += temp;
     }
     #pragma omp section
