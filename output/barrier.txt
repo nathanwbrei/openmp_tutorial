@@ -1,5 +1,4 @@
 Thread 0 did some work.
 Thread 1 did some work.
-Threads rejoin
 Thread 0 after barrier.
 Thread 1 after barrier.

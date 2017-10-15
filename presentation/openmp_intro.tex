@@ -1,4 +1,4 @@
-\documentclass[handout]{beamer}
+\documentclass[]{beamer}
 \usecolortheme{beaver}
 \setbeamertemplate{navigation symbols}{}
 \setbeamercolor{block title}{bg=white!95!black,fg=black}
@@ -77,25 +77,26 @@
   \titlepage
 \end{frame}
 
-\begin{frame}
-  \frametitle{Parallelism levels}
-  \begin{block}{Distributed-memory parallelism}
-    \begin{description}[Disadvantages]
-    \item[Description] Isolated processes, often running on different machines, communicate by sending messages.
-    \item[Advantages] High scalability
-    \item[Disadvantages] Reliability, communication overhead
-    \item[Examples] MPI, Hadoop, Spark. Akka, Erlang. 
-    \end{description}
-  \end{block}
-  \begin{block}{Shared-memory thread-level parallelism}
-    \begin{description}[Disadvantages]
-    \item[Description] Multiple threads on the same machine. Each thread has its own isolated register space, but they share a memory address space.
-    \item[Advantages] Parallelizing existing code, memory-bound problems
-    \item[Disadvantages] Contains subtleties
-    \item[Examples] Pthreads, Java threads, OpenMP
-    \end{description}
-  \end{block}
-\end{frame}
+%\begin{frame}
+%  \frametitle{Parallelism levels}
+%  \begin{block}{Distributed-memory parallelism}
+%    \begin{description}[Disadvantages]
+%    \item[Description] Isolated processes, often running on different machines, communicate by sending messages.
+%    \item[Advantages] High scalability
+%    \item[Disadvantages] Reliability, communication overhead
+%    \item[Examples] MPI, Hadoop, Spark. Akka, Erlang. 
+%    \end{description}
+%  \end{block}
+
+%  \begin{block}{Shared-memory thread-level parallelism}
+%    \begin{description}[Disadvantages]
+%    \item[Description] Multiple threads on the same machine. Each thread has its own isolated register space, but they share a memory address space.
+%    \item[Advantages] Parallelizing existing code, memory-bound problems
+%    \item[Disadvantages] Contains subtleties
+%    \item[Examples] Pthreads, Java threads, OpenMP
+%    \end{description}
+%  \end{block}
+%\end{frame}
 
 \begin{frame}
   \frametitle{Parallelism levels}
@@ -109,13 +110,36 @@
   \end{block}
 \end{frame}
 
+\begin{frame}
+  \frametitle{Introduction to OpenMP}
+
+  \begin{block}{Goals}
+    \begin{itemize}
+    \item Higher-level threading concepts/patterns
+    \item Faster, less boilerplate, fewer threading errors
+    \item Convenient for parallelizing existing code
+    \item Automatic fallback to sequential code
+    \item Automatically chooses parallelism level at runtime
+    \item Can be used in conjunction with MPI for further scaling
+    \end{itemize}
+  \end{block}
+
+  \begin{block}{Tradeoffs}
+    \begin{itemize}
+    \item Implemented as compiler directives. Opaque internals.
+    \item Simple syntax does not constrain semantics.
+    \end{itemize}
+  \end{block}
+
+\end{frame}
+
+
 \begin{frame}[fragile]
   \frametitle{Launching a team of threads --- Parallel Regions}
   \begin{columns}[t]%[onlytextwidth]
     \begin{column}{0.65\textwidth}
       \inputcode[]{c}{src/ex1.c}
     \end{column}
-    \pause
     \begin{column}{0.4\textwidth}
       \inputcode[]{text}{output/ex1.txt}
       \begin{ccode}[]
@@ -128,12 +152,10 @@
       \end{ccode}
     \end{column}
   \end{columns}
-  \pause
   \begin{itemize}
   \item \emph{Fork-join execution model}
   \item Print statements are interleaved nondeterministically
   \item Number of threads is chosen automatically, or specified by \mintinline{text}{$OMP_NUM_THREADS}, \mintinline{c}{omp_set_num_threads(int t)}, \mintinline{c}{#pragma omp parallel num_threads(2)}
-  \item Threads are synchronized afterward unless \mintinline{text}{nowait} specified.
   \end{itemize}
 \end{frame}
 
@@ -143,7 +165,6 @@
     \begin{column}{0.65\textwidth}
       \inputcode[]{c}{src/ex2.c}
     \end{column}
-    \pause
     \begin{column}{0.4\textwidth}
       \begin{ccode}[]
         {text}
@@ -158,7 +179,6 @@
       \inputcode[]{text}{output/ex2.txt}
     \end{column}
   \end{columns}
-  \pause
   \begin{itemize}
   \item Number of parallel sections is fixed at compile time.
   \item No guarantee how statements get interleaved, or how many threads are actually used!
@@ -183,7 +203,6 @@
         }
         printf("b = %d\n", b);\end{ccode}
     \end{column}
-    \pause
     \begin{column}{0.3\textwidth}
       \begin{ccode}[]
         {text}
@@ -201,7 +220,6 @@
           ==> (b == 0)\end{ccode}
     \end{column}
   \end{columns}
-  \pause
   \begin{itemize}
   \item For simple programs, the output often \emph{appears} deterministic.
   \item However, instruction interleaving is \emph{not} defined by OpenMP.
@@ -215,12 +233,13 @@
 
 \begin{frame}[fragile]
   \frametitle{Problem: Race conditions}
-  Some race conditions are not obvious from the C code, but emerge when compiled to assembly/microcode. \emph{Every} variable access in C requires memory \texttt{load} or \texttt{store} operations unless the compiler can prove otherwise. 
+  Some race conditions are not obvious from the C code, but emerge when compiled to assembly/microcode. Assume \emph{every} variable access in C requires memory \texttt{load} or \texttt{store} operations unless the compiler can prove otherwise. 
   
   \begin{columns}[t]%[onlytextwidth]
     \begin{column}{0.43\textwidth}
       \inputcode[firstline=5,lastline=22,gobble=2]{c}{src/ex4.c}
     \end{column}
+    \pause
 
     \begin{column}{0.43\textwidth}
       \inputcode[firstline=5,lastline=22,gobble=2]{c}{src/ex5.c}
@@ -253,13 +272,41 @@
 
 
 \begin{frame}[fragile]
+  \frametitle{Dependency Graphs}
+
+  How do we know if a parallel program is correct? 
+
+  Which instruction reorderings preserve the program's meaning?
+
+  \begin{itemize}
+
+  \item Analyze data flow and control flow to find a minimal partial ordering, a.k.a.\ a \emph{dependency graph}.
+
+  \item Two instructions have a data dependency if both access the same variable and at least one access is a write.
+
+  \item Kinds of data dependencies: Read-After-Write, Write-After-Read, Write-After-Write
+
+  \item WAR and WAW hazards can sometimes be finessed away by simply referencing a different memory location.
+
+  \end{itemize}
+
+      \begin{ccode}[]
+        {c}
+        1: x = 22;
+        2: y = x + 1;     // RAW dep on (1)
+        3: x = 0;         // WAR dep on (2)
+        4: y = 0;         // WAW dep on (3)
+      \end{ccode}
+\end{frame}
+
+
+\begin{frame}[fragile]
   \frametitle{Privatizing intermediate variables}
   \begin{columns}[t]%[onlytextwidth]
     \begin{column}{0.6\textwidth}
       \inputcode[firstline=8,lastline=32,gobble=2]{c}{src/ex6.c}
     \end{column}
 
-    \pause
     \begin{column}{0.4\textwidth}
       \inputcode[]{text}{output/ex6.txt}
       Problem: Compiler treats variables as shared by default! Reusing variable names creates unnecessary data hazards.
@@ -300,48 +347,18 @@
 \begin{frame}[fragile]
   \frametitle{Enforcing statement ordering between threads --- Barriers}
   \begin{columns}[t]%[onlytextwidth]
-    \begin{column}{0.55\textwidth}
+    \begin{column}{0.6\textwidth}
       \inputcode[firstline=5,lastline=27,gobble=2]{c}{src/barrier.c}
     \end{column}
-    \pause
     \begin{column}{0.5\textwidth}
       \begin{block}{Definition}
       A point in the execution of a program encountered by a team of threads, beyond which no thread in the team may execute until all threads in the team have reached the barrier.
       \end{block}
       \begin{block}{In practice}
-        Implicit barriers are defined at the end of most work-sharing constructs, such as \texttt{sections}. \texttt{\#pragma omp barrier} can be used in simple cases. For complex orderings, use \texttt{parallel for}.
+          Implicit barriers are defined at the end of most work-sharing constructs, such as \texttt{sections}, unless \texttt{nowait} is specified. For complex orderings, use \texttt{for ordered}.
       \end{block}
     \end{column}
   \end{columns}
-\end{frame}
-
-
-\begin{frame}[fragile]
-  \frametitle{Dependency Graphs}
-
-  How do we know if a parallel program is correct? 
-
-  Which instruction reorderings preserve the program's meaning?
-
-  \begin{itemize}
-
-  \item Analyze data flow and control flow to find a minimal partial ordering, a.k.a. a \emph{dependency graph}.
-
-  \item Two instructions have a data dependency if both access the same variable and at least one access is a write.
-
-  \item Kinds of data dependencies: Read-After-Write, Write-After-Read, Write-After-Write
-
-  \item WAR and WAW hazards can sometimes be finessed away by simply referencing a different memory location.
-
-  \end{itemize}
-
-      \begin{ccode}[]
-        {c}
-        1: x = 22;
-        2: y = x + 1;     // RAW dep on (1)
-        3: x = 0;         // WAR dep on (2)
-        4: y = 0;         // WAW dep on (3)
-      \end{ccode}
 \end{frame}
 
 
@@ -353,12 +370,10 @@
     \begin{column}{0.65\textwidth}
       \inputcode[]{c}{src/exfor.c}
     \end{column}
-    \pause
     \begin{column}{0.4\textwidth}
       \inputcode[]{text}{output/exfor.txt}
     \end{column}
   \end{columns}
-  \pause
   \begin{itemize}
   \item Available scheduling strategies: static, dynamic, guided
   \item Adjust chunk size in order to increase the parallelism granularity
@@ -411,4 +426,11 @@
   \item Reductions are of the form \texttt{+=} or \texttt{min()}, custom reductions possible.
   \end{itemize}
 \end{frame}
+
+\begin{frame}[plain,c]
+\begin{center}
+    \huge Thank you!
+\end{center}
+\end{frame}
+
 \end{document}
