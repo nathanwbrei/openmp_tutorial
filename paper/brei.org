@@ -1,0 +1,128 @@
+
+
+Ferienakademie Paper
+====================
+
+
+1. Introduction
+
+* When do we wish to parallelize a program? 
+
+-- Latency constraints, such as a game
+-- Parallel hardware
+-- Large problem size
+
+* What are the different techniques, and what are their pros/cons?
+
+Having decided that a program must be parallelized, the first question to answer is "what level"?
+
+3. Distributed-memory
+2. Shared-memory
+1. Shared-registers. Instruction-level parallelism
+
+%  \frametitle{Parallelism levels}
+%  \begin{block}{Distributed-memory parallelism}
+%    \begin{description}[Disadvantages]
+%    \item[Description] Isolated processes, often running on different machines, communicate by sending messages.
+%    \item[Advantages] High scalability
+%    \item[Disadvantages] Reliability, communication overhead
+%    \item[Examples] MPI, Hadoop, Spark. Akka, Erlang. 
+%    \end{description}
+%  \end{block}
+
+%  \begin{block}{Shared-memory thread-level parallelism}
+%    \begin{description}[Disadvantages]
+%    \item[Description] Multiple threads on the same machine. Each thread has its own isolated register space, but they share a memory address space.
+%    \item[Advantages] Parallelizing existing code, memory-bound problems
+%    \item[Disadvantages] Contains subtleties
+%    \item[Examples] Pthreads, Java threads, OpenMP
+%    \end{description}
+%  \end{block}
+
+* What are the distinguishing features of OpenMP?
+
+* How does OpenMP compare to other shared-memory tools, such as pthreads, C++ threads, PGAS, etc?
+
+* What are the goals for the rest of this document?
+
+This paper shall provide an introduction to OpenMP for someone who is familiar with C programming, but not familiar with parallel programming in general or OpenMP in particular. It shall present essential OpenMP constructs such as parallel regions, sections, for loops, and reductions. At the same time, it will introduce the reader to parallel programming concepts, challenges, and techniques as the need arises. The paper will end by giving an in-depth example of how to effectively parallelize a fluid flow simulation.
+
+
+
+2. Parallel regions and the fork-join execution model.
+
+Parallel regions are OpenMP's most basic building block. Unlike POSIX or Java threads, where threads are created individually and each is assigned a function, OpenMP implements the fork-join execution model. This works as follows:
+
+Outside the parallel region, the code runs on just one master thread. When it encounters the pragma, the program execution forks such that a team of threads are all running the code inside the region. Once each thread has finished executing the code in the region, it waits for the others. Once all threads have finished, they join: all but one are deactivated, and execution continues on the remaining thread.
+
+A minimal example is given in Listing 1. The parallel region is the code block on lines 10--22. It has been annotated with a pragma, using the following syntax.
+
+	#pragma omp parallel [clause(value) ...] 
+
+* #pragma: send a (possibly optional, not necessarily standardized message to the compiler)
+* omp: using the OpenMP namespace. 
+* parallel: start a parallel region if we aren't already in one
+* clause: Optional configuration details
+
+Note that because the line with #pragma is parsed by OpenMP, the curly bracket which opens the block must be on the following line. 
+
+
+
+
+* Why can't I put my curly brace on the same line as the pragma?
+
+How can I use parallel regions?
+-- Get current thread, get num threads
+-- Set num threads
+
+The total number of threads 
+
+
+
+3. Parallel sections
+* What do we do if we want to run different code in different threads?
+
+
+
+
+4. Understanding Race conditions
+Def: A race condition is a class of bug where the program's output depends on the timing of events which are not under the programmer's control.
+
+	Extremely simple example: 
+
+	Register machine model
+
+	Microcode example
+
+	Dependency graph
+
+
+Techniques for mitigating race conditions
+
+	
+	6. Privatizing intermediate variables
+
+	7. Critical and Atomic sections
+			* What about Amdahl's Law?
+
+	8. Barriers
+
+6. Parallel For loops
+
+	* Syntax
+	* Loop-carried dependencies
+
+	
+
+7 Reductions
+
+
+
+8. Lattice Boltzmann
+
+
+
+
+
+
+

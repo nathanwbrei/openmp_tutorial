@@ -1,0 +1,81 @@
+
+Register Machine Model
+
+------
+
+Distributed-memory parallelism cartoon
+
+Shared-memory parallelism cartoon
+
+Instruction-level parallelism cartoon
+
+------
+
+Table comparing the two
+
+Instruction-level	Thread-level	Process-level
+Shared Registers+Memory	 Shared Memory 	Distributed Memory
+
+Automatic
+Compiler optimizations, 
+#pragma simd,
+Assembly
+
+Pthreads
+OpenMP
+
+MPI
+Hadoop
+
+------
+
+OMP parallel region
+Fork-join model
+
+Print "Hello from thread 1"
+
+------
+
+OMP parallel sections
+Update bank balance
+Concept of instructions interleaving
+Concept of a race condition.
+
+C-only race conditions: bank account
+Assembly race conditions: bank account
+
+------
+
+Running a program in parallel involves REORDERING STATEMENTS
+When is it safe to reorder two statements?
+
+Concept of dependencies
+- Convert statements to dependency graph
+
+- Two statements reference the same variable,
+	and at least one is a write. 
+- RAW, WAR, WAW
+
+- Second option: Don't use mutable variables. Referential transparency. => compiler knows about the dependencies which matter, ignores the ones
+
+------
+
+Associative updates to a shared variable:
+Bank account
+
+OMP critical sections: 
+
+Before modifying a shared resource, each thread first checks a variable which indicates if that resource is free. If not, it either waits until the variable indicates that the other thread has finished, or it goes off and does something else.
+
+Reduction?
+
+------
+
+Non-associative updates: Enforce an ordering between threads
+OMP barrier
+
+------
+
+OMP loops
+
+
