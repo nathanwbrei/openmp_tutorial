@@ -12,7 +12,7 @@ int main(int argc, char** argv) {
   }
   for (int i=0; i < 16; i++)
   {
-    printf("A[%d] got thread %d\n", i, A[i]);
+    printf("Iter %d was assigned thread %d\n", i, A[i]);
   }
 }
 

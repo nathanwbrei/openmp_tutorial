@@ -1,6 +1,6 @@
 \documentclass[conference, a4paper]{IEEEtran-modified}
 \usepackage{tikz}
-
+\usepackage{multicol}
 \usepackage[outputdir=build]{minted}
 \usepackage{tcolorbox}
 \tcbuselibrary{minted,skins}
@@ -106,16 +106,14 @@ When designing parallel programs, it is helpful to imagine an assembly line. Alt
 
 \subsection{Instruction-level parallelism}
 
-    Instruction-level parallelism happens within the context of a single core, and is specific to each processor's microarchitecture. On one hand, each core maximizes its own instruction throughput by pipelining and parallelizing functional units. On the other hand, the use of \emph{vectorized} instructions allows one instruction to operate on multiple values at once. Taking advantage of this parallelism level requires detailed knowledge of the hardware, so it is usually delegated to the compiler. The programmer usually coaxes the compiler to find an efficient solution by reorganizing data structures and providing hints. Although this maximizes the utilization of each core, there is a limited scalability gain (e.g. a speedup of 8) and even this requires a predominantly compute-bound problem. Tools for exploiting instruction-level parallelism include  pragmas, intrinsics functions, and plain assembly code.
+    Instruction-level parallelism happens within the context of a single core, and is specific to each processor's microarchitecture. On one hand, each core maximizes its own instruction throughput by pipelining and parallelizing functional units. On the other hand, the use of vectorized \emph{SIMD} (Single Instruction, Multiple Data) instructions allows one instruction to operate on multiple values at once. Taking advantage of this parallelism level requires detailed knowledge of the hardware, so it is usually delegated to the compiler. The programmer usually coaxes the compiler to find an efficient solution by reorganizing data structures and providing hints. Although this maximizes the utilization of each core, there is a limited speedup possible (e.g. 8) and even this requires the problem to be compute-bound. Tools for exploiting instruction-level parallelism include pragmas, intrinsics functions, and plain assembly code.
 
 
 \subsection{Shared-memory thread-level parallelism}
 
     Thread-level parallelism splits the computation across multiple threads within a single processor. This can yield a speedup when each thread is executed on a separate core. Each thread sees its own isolated register space, but all threads access the same memory address space. The standard POSIX threading library is called pthreads, but it is too low-level for everyday use. Two popular higher-level libraries are OpenMP and Thread Building Blocks (TBB). OpenMP extends C/C++/Fortran using pragmas, whereas TBB is built from C++ templates.
 
-    The main advantage to thread-level parallelism is that the same data is automatically available to all threads. This makes it the only parallelism level which is effective for memory-bound problems: distributed-memory parallelism narrows the memory bottleneck, and instruction-level parallelism is overshadowed by it. 
-
-    A second advantage is that it allows an incremental approach to parallelizing existing code. In contrast, distributed-memory parallelism requires reorganizing the program's entire control flow, and instruction-level parallelism often requires reorganizing the data structures. OpenMP, in particular, is built into the language itself so that it can rewrite entire syntax trees. This means that blocks of code can be parallized in place by merely adding an annotation; the work of managing the team of threads is handled transparently. 
+    The main advantage to thread-level parallelism is that the same data is automatically available to all threads. This makes it the only parallelism level which is effective for memory-bound problems: distributed-memory parallelism narrows the memory bottleneck, and instruction-level parallelism is overshadowed by it. A second advantage is that it allows an incremental approach to parallelizing existing code. In contrast, distributed-memory parallelism requires reorganizing the program's entire control flow, and instruction-level parallelism often requires reorganizing the data structures. 
 
     The main disadvantage of thread-level parallelism is that it is conceptually tricky -- for both a human and a compiler -- to reason about program correctness and liveness. A program may intermittently return incorrect results or hang, depending on the exact pattern of data updates. The high-level parallelism directives can not completely isolate the effects of their enclosed computations. In order to write correct parallel code, a programmer must have a thorough understanding of the sequential code. Furthermore, flaws usually cannot be detected at compile time. Tools such as ThreadSanitizer \emph{instrument} the binary in order to detect them at runtime.
 
@@ -133,14 +131,16 @@ When designing parallel programs, it is helpful to imagine an assembly line. Alt
     The OpenMP syntax has a simple grammar, as shown by the example below:
       \begin{ccode}[]
         {text}
-        #pragma omp parallel private(acc) num_threads(8)
-      \end{ccode}
+        #pragma omp parallel private(acc) num_threads(8) 
+        {
+            // Some code
+        }\end{ccode}
 
-    \texttt{\#pragma} indicates that the rest of the line is not C code, but rather an optional hint for the compiler. \texttt{omp} is a \emph{sentinel} indicating that this is an OpenMP directive. \texttt{parallel} is the directive name, which in this case indicates that the following block of code should be run in parallel using a team of threads, as described in the next section. The directive name is followed by a set of clauses. Clauses are separated by spaces, may be in any order, and may be repeated. Many clauses take parameters, which are enclosed in parentheses following the clause name; arguments are separated by commas and keyworded arguments by colons, similar to Python.
+    \texttt{\#pragma} indicates that the rest of the line is not C code, but rather an optional hint for the compiler. \texttt{omp} is a \emph{sentinel} indicating that this is an OpenMP directive. \texttt{parallel} is the directive name, which in this case indicates that the following block of code should be run in parallel using a team of threads, as described in the next section. The directive name is followed by a set of clauses. Clauses are separated by spaces, may be in any order, and may be repeated. Many clauses take parameters, which are enclosed in parentheses following the clause name; arguments are separated by commas and keyworded arguments by colons, similar to Python. Blocks of code must be in brackets, and the opening bracket must be on the following line, as otherwise it gets parsed as being part of the pragma.
     
 
 
-\section{Launching a team of threads --- Parallel Regions}
+\section{Launching a team of threads}
 
     The most basic OpenMP construct is the \emph{parallel region}, which is a single block of code that gets executed once by every thread in the team. This implements the \emph{fork-join execution model}, in which control flow starts in a single thread, forks to multiple threads, all of which perform some computation, and then rejoins upon completion, with one thread continuing execution and the rest either idling or terminating. The following example shows an extremely simple block run within a parallel region that has been constrained to use three threads:
 
@@ -148,14 +148,13 @@ When designing parallel programs, it is helpful to imagine an assembly line. Alt
 
     The \texttt{num\_threads} clause fixes the number of threads in the team. This should only be hardcoded like this when the correctness of the enclosed code depends on that number, since hardcoding prevents the program from taking advantage of additional cores which may be available on different machines. In order to set the value at runtime from within the program, OpenMP also provides the function \mintinline{c}{omp_set_num_threads(int t)}. To set the value at runtime from outside the program it is convenient to use the environment variable \mintinline{c}{OMP_NUM_THREADS=3}. If the variable is not constrained anywhere, OpenMP will query the operating system in order to determine the best value. 
 
-    Upon being run, the code produces the following output:
-
-      \inputcode[]{text}{output/ex1.txt}
-
 
     It is important to note that the OpenMP specification does not guarantee that three threads are used in practice, or even that the code is run in parallel at all. If the implementation decides that the best option is to run the code sequentally within one thread three times, it is free to do so. This is for practical reasons: the mapping from threads to cores is buried beneath many layers, including the OpenMP implementation, the operating system, and the CPU architecture, all of which may vary independently and offer their own notion of a virtualized thread.
 
-    This does not pose a theoretical problem because while instructions within a thread are required to be ordered, there is corresponding assumption between threads. Instead, they are interleaved nondeterministically. When run a second time, the following output is produced: 
+    This does not pose a theoretical problem because while instructions within a thread are required to be ordered, there is no corresponding assumption between threads. Instead, instructions in different threads get interleaved nondeterministically. For instance, two runs of the above code yield different outputs:
+
+\begin{multicols}{2}
+      \inputcode[]{text}{output/ex1.txt}
 
       \begin{ccode}[]
         {text}
@@ -163,10 +162,10 @@ When designing parallel programs, it is helpful to imagine an assembly line. Alt
         Hello from thread 2 of 3
         Hello from thread 0 of 3
         Hello from thread 1 of 3
-        ...Rejoined.
-      \end{ccode}
+        ...Rejoined.\end{ccode}
+\end{multicols}
 
-    Note however that the interleaving is also not always obviously random. Small examples, such as those in this paper, often run with the same interleaving many times in a row, and different interleavings only manifest when run on different hardware or on a larger problem size.
+    Note however that the interleaving is also not always obviously random. Small examples, such as those in this paper, often run with the same interleaving many times in a row, and different interleavings only manifest when run on different hardware or on a larger problem size. This is because the interleaving depends on the CPU architecture, operating system, system load, compiler, and code optimization level. This means that unit testing is ineffective at finding threading bugs, and the programmer should use tools like Valgrind or ThreadSanitizer instead. 
 
 
 \section{Sections}
@@ -174,9 +173,11 @@ When designing parallel programs, it is helpful to imagine an assembly line. Alt
 
 Oftentimes a programmer wishes to assign distinct code blocks to individual threads. While this could technically be accomplished by using a plain parallel region and branching according to thread number, a higher-level construct, called a \emph{section}, achieves this in a general way. 
 
-The syntax is as follows: Within a \texttt{parallel} region, the programmer may declare a \texttt{sections} region. Within the latter, they may then declare any number of individual \texttt{section} blocks. Each \texttt{section} is guaranteed to be executed exactly once, and OpenMP automatically decides how sections get mapped to threads. Note that the number of sections is fixed at compile time. For brevity the \texttt{parallel} and \texttt{sections} directives may be combined as shown in the example below: 
+The syntax is as follows: Within a \texttt{parallel} region, the programmer may declare a \texttt{sections} region. Within the latter, they may then declare any number of individual \texttt{section} blocks. Each \texttt{section} is guaranteed to be executed exactly once, and OpenMP automatically decides how sections get mapped to threads. Note that the number of sections is finite and fixed at compile time. For brevity the \texttt{parallel} and \texttt{sections} directives may be combined as shown in the example below: 
 
       \inputcode[]{c}{src/ex2.c}
+      \begin{multicols}{2}
+
       \begin{ccode}[]
         {text}
         Thread 0, iter 0
@@ -188,31 +189,21 @@ The syntax is as follows: Within a \texttt{parallel} region, the programmer may 
           Thread 1, iter 3
         Thread 0, iter 3\end{ccode}
       \inputcode[]{text}{output/ex2.txt}
+\end{multicols}
+
+At the end of a \texttt{sections} region is an \emph{implicit barrier}. A barrier is a point in the program execution which no thread may cross until all other threads have reached that point. This dramatically simplifies the program state space, making the program easier to reason about. It also enforces a coarse ordering of instructions between threads: Instructions on one side of the barrier will always execute before instructions on the other, regardless of thread. The downsides of using them are that they introduce additional overhead, reduce parallelism, and require finer-grained load balancing. Barriers can be placed inside a parallel region as follows:
+
+      \begin{ccode}[]
+        {c}
+        #pragma omp barrier \end{ccode}
 
 
-At the end of a \texttt{sections} region is an \emph{implicit barrier}.
-One tool which considerably simplifies reasoning about parallel programs is 
-
-    In order to preserve 
-
-
-  One common source of problems happens when 
-
-  Related problem: different threads take different paths.
-  Protect control flow. Enforce ordering between threads. Barriers.
-
-  Definition: A point in the execution of a program encountered by a team of threads, beyond which no thread in the team may execute until all threads in the team have reached the barrier.
- 
-  In practice: Implicit barriers are defined at the end of most work-sharing constructs, such as \texttt{sections}, unless the \texttt{nowait} clause is specified. For complex orderings, use \texttt{for ordered}.
-
-  When can barriers be used?
-
-  
+While barriers are used explicitly and often when programming with pthreads, they rarely need to be explicitly invoked with OpenMP, because they are baked into many of OpenMP's higher-level work-sharing constructs. Instead, the usual workflow has the programmer parallelizing the code without worrying about barriers, profiling the code, and then disabling the barriers that create hot spots. This is done by specifying the clause \texttt{nowait}. It is up to the programmer to ensure that disabling the barriers does not affect the correctness of the program.
 
 
 \section{Race conditions}
 
-The previous two examples demonstrated that instructions are only \emph{partially ordered}: Within each thread all instructions are ordered, but between threads they may be interleaved nondeterministically like a shuffled deck of cards. If multiple threads access a shared resource, the ordering of those accesses is unpredictable. This makes multithreaded programs vulnerable to \emph{race conditions}, a class of bug where the program's output depends on the timing of events which are not under the programmer's control. The following code snippet shows a variable \texttt{b} being assigned the value of \texttt{a}, while \texttt{a} is being simultaneously updated. Whether the new value of \texttt{a} propagates into \texttt{b} is indeterminate.
+The previous examples demonstrated that, in the absence of barriers, instructions are only \emph{partially ordered}: Within each thread all instructions are ordered, but between threads they may be interleaved nondeterministically like a shuffled deck of cards. If multiple threads access a shared resource, the ordering of those accesses is unpredictable. This makes multithreaded programs vulnerable to \emph{race conditions}, a class of bug where the program's output depends on the timing of events which are not under the programmer's control. The following code snippet shows a variable \texttt{b} being assigned the value of \texttt{a}, while \texttt{a} is being simultaneously updated. Whether the new value of \texttt{a} propagates into \texttt{b} is indeterminate.
 
 
       \begin{ccode}[]{c}
@@ -228,18 +219,10 @@ The previous two examples demonstrated that instructions are only \emph{partiall
         }
         printf("b = %d\n", b);\end{ccode}
 
-      \begin{ccode}[]
-        {text}
-        b = 1\end{ccode}
-      \begin{ccode}[]
-        {text}
-        b = 0\end{ccode}
-
-For simple programs, the output often appears deterministic. However, instruction interleaving is \emph{not} defined by OpenMP. It depends on the CPU architecture, operating system, system load, compiler, and code optimization level. Use Valgrind or ThreadSanitizer to proactively find dormant race conditions.
 
 Oftentimes race conditions are not obvious from the C code, but emerge from the resulting assembly or microcode. One major reason is that the compiler determines when data gets moved between memory and registers. The programmer must assume that every variable access requires separate \texttt{load} and \texttt{store} operations which may be vulnerable to interleaving. It is possible to avoid this by using \emph{atomic} operations, but this is very inefficient, for reasons which shall be explored later. 
 
-The following C code updates a shared accumulator, \texttt{total}, in two separate threads. A naive analysis suggests that this code will always return 3, regardless of interleaving, because integer addition is associative.
+The following C code updates a shared accumulator, \texttt{total}, in two separate threads. At first glance it appears that this code will always return 3, regardless of interleaving, because integer addition is associative.
 
 %  \inputcode[firstline=5,lastline=22,gobble=2]{c}{src/ex4.c}
         \begin{ccode}[]{c}
@@ -268,7 +251,9 @@ The following C code updates a shared accumulator, \texttt{total}, in two separa
 
 However, once each statement has been broken into separate \texttt{load}, \texttt{add}, and \texttt{store} statements, it becomes clear that there exist interleavings which are not correct. To run correctly, the instruction ordering must be constrained such that one \texttt{load} comes after the other \texttt{store} instruction; otherwise the effect of one of the statements will be overwritten completely.
 
-  \inputcode[firstline=5,lastline=22,gobble=2]{c}{src/ex5.c}
+\inputcode[firstline=5,lastline=22,gobble=2]{c}{src/ex5.c}
+
+\begin{multicols}{2}
   
       \begin{ccode}[after skip=4pt]
         {text}
@@ -290,26 +275,21 @@ However, once each statement has been broken into separate \texttt{load}, \textt
         store b -> (total)
         
           ==> (total == 1)\end{ccode}
+\end{multicols}
 
-  \section{Dependency Graphs}
+In a sequential program, some instructions can be reordered without changing the meaning of the program, whereas others must not. In a parallel program, certain instructions will be reordered. Thus for a parallel program to have the same output as the sequential version, the space of possible reorderings must exclude any which are not compatible with the sequential version. This is expressed formally through \emph{dependency analysis}. The basic idea is to represent the minimal necessary ordering constraints between instructions (\emph{dependencies}) as a graph and then ensure that the parallel version preserves the graph structure. 
 
-To determine whether or not a parallel program is correct, one must determine whether there exists a reordering which changes the program's meaning. 
-
-
-Analyze data flow and control flow to find a minimal partial ordering, a.k.a.\ a \emph{dependency graph}.
-
-Two instructions have a data dependency if both access the same variable and at least one access is a write.
-
-There are three kinds of data dependencies: Read-After-Write (RAW), Write-After-Read (WAR), and Write-After-Write (WAW). WAR and WAW hazards can sometimes be finessed away by simply referencing a different memory location.
-
+There are two broad kinds of dependencies, data dependencies and control dependencies. Control dependencies arise at conditional jumps, which need the results of a previous instruction to determine what the next instruction should be. Data dependencies arises from modifying the contents of variables; two instructions have a data dependency if both access the same variable and at least one access is a write. Data dependencies may be subdivided into three subgroups: Read-After-Write (RAW), Write-After-Read (WAR), and Write-After-Write (WAW). These are illustrated below:
 
       \begin{ccode}[]
         {c}
         1: x = 22;
         2: y = x + 1;     // RAW dep on (1)
         3: x = 0;         // WAR dep on (2)
-        4: y = 0;         // WAW dep on (3)
-      \end{ccode}
+        4: y = 0;         // WAW dep on (3)\end{ccode}
+
+
+RAW dependencies are the most difficult to deal with; the programmer must either serialize the dependence or change the entire algorithm. On the other hand, WAR and WAW dependencies can often be finessed away by simply writing to a different memory location. This forms the basis of \emph{register renaming}, a technique used inside CPUs for increasing instruction-level parallelism. 
 
 
 \section{Privatizing intermediate variables}
@@ -319,7 +299,7 @@ There are three kinds of data dependencies: Read-After-Write (RAW), Write-After-
 
   \inputcode[firstline=8,lastline=32,gobble=2]{c}{src/ex7.c}
 
-  The correctness of this code hinges on the clause \mintinline{c}{private(i,t)}. When included, the program runs as expected:
+  The correctness of this code hinges on the clause \mintinline{c}{private(i,t)}. When included, the program runs as expected.
 
   \inputcode[]{text}{output/ex7.txt}
 
@@ -328,11 +308,11 @@ There are three kinds of data dependencies: Read-After-Write (RAW), Write-After-
   \inputcode[]{text}{output/ex6.txt}
 
   When writing new code, it is good practice to declare thread-local variables within the block itself and to avoid writing to global state. With existing code, this would require significant refactoring and is sometimes not even possible. The alternative is to explicitly tell OpenMP which variables are meant to be shared and which are meant to be isolated. There are several clauses for this purpose. By default, OpenMP assumes that all variables are shared, and the programmer must declare them as \mintinline{c}{private}. This default assumption may be changed, via the \mintinline{text}{default} clause, which accepts as arguments \mintinline{text}{shared} or  
-  mintinline{c}{none}. When the default is changed to \mintinline{text}{none}, all variables within the lexical extent of that parallel region must be explicitly scoped. 
+  mintinline{c}{none}. When the default is changed to \mintinline{text}{none}, all variables used within the parallel region must be explicitly scoped. 
 
   There are some subtleties involved when scoping a variable as \mintinline{text}{private}. Under the hood, OpenMP is declaring a new object of the same type for each thread and changing all references within the block to refer to it. However, it neither initializes the local variables nor updates the global variable after the parallel region has exited. For the former, OpenMP provides the \mintinline{c}{firstprivate} clause, which copies the global value into each local variable. For the latter, it provides the \mintinline{c}{lastprivate} clause, which assigns the local value from the last loop iteration or section to the global variable. This mimics the effects of the sequential version of the code. The two clauses may be combined.
 
-\section{Protecting shared resources -- Critical and Atomic Sections}
+\section{Protecting shared resources}
 
   While it is desirable to keep variables private to a thread whenever possible, results must be written to a shared variable at some point, as otherwise the results of the computation will be lost when the threads join. The standard tools for achieving this are locks and mutexes. The basic idea is that each shared variable (or `resource') is protected by a lock variable. Each thread should acquire the lock before modifying the resource and release it afterwards. If one thread has already acquired the lock, the other threads must wait until it is released. This basic pattern forms the core of the \texttt{pthreads} library. 
 
@@ -340,51 +320,33 @@ There are three kinds of data dependencies: Read-After-Write (RAW), Write-After-
 
   The downside to using critical sections is that they effectively serialize part of the program. As per Amdahl's Law, the larger the critical sections, the worse the program will scale. Thus it is desirable to keep them as short and as few as possible. If there are multiple resources which can be updated independently, it is beneficial to use \emph{named} critical sections for each resource, so that updates to one resource don't unnecessarily block updates to another.
 
-  Oftentimes the critical sections are extremely short, possibly only several assembly instructions, such as the summation operator \texttt{+=}. In this case, it is overkill to acquire a lock since the synchronization can be achieved by protecting the load and store at the assembly level instead. This is much finer-grained and lightweight. However, it may only be used on statements with unary operators such as \mintinline{c}{++, --} or binary operators such as \mintinline{c}{+=, *=, -=, /=, &=, ^=, |=, <<=, >>=}. 
-
-  Use of a named critical section and atomic section are shown below.
+  Oftentimes the critical sections are extremely short, possibly only several assembly instructions, such as the summation operator \texttt{+=}. In this case, it is overkill to acquire a lock since the synchronization can be achieved by protecting the load and store at the assembly level instead. This is much finer-grained and lightweight. However, it may only be used on statements with unary operators such as \mintinline{c}{++, --} or binary operators such as \mintinline{c}{+=, *=, -=, /=, &=, ^=, |=, <<=, >>=}. Use of a named critical section and atomic section are shown below.
 
     \inputcode[firstline=6,lastline=28,gobble=2]{c}{src/ex8.c}
-
-    \inputcode[]{text}{output/ex8.txt}
-
-
 
 
 \section{Parallel For Loops}
 
-  For numerical code, the majority of the computation usually happens inside a loop, and the programmer wishes to distribute the work evenly across the machine's cores. This should not be achieved with sections because sections use a fixed number of threads and would require code duplication for each thread. Instead, OpenMP provides a directive to parallelize a loop as follows: 
+  For numerical code, the majority of the computation usually happens inside a loop, and the programmer wishes to distribute the work evenly across the machine's cores. This should not be achieved with sections because sections use a fixed number of threads and would require code duplication for each thread. Instead, OpenMP provides a directive to parallelize a loop directly. The following code reports which thread handled each iteration number:
 
       \inputcode[]{c}{src/exfor.c}
-      \inputcode[]{text}{output/exfor.txt}
       
-  There are three scheduling strategies: static, dynamic, and guided. Static scheduling assigns each thread a chunk of work in a round-robin fashion. 
+  This mapping is called the \emph{scheduling strategy}, and OpenMP offers three options: static, dynamic, and guided. Static scheduling assigns each thread a chunk of work in a round-robin fashion. For instance, if the chunk size is 3, then thread 0 takes the first 3 iterations, thread 1 takes the next 3, etc. Dynamic scheduling also divides the work into chunks of constant size, but assigns chunks to threads on a first-in, first-out basis, which results in better load balancing at the expense of extra overhead. Guided scheduling is like dynamic except that it starts with a large chunk size and decreases it over time. 
 
-  These may be chosen at runtime. When choosing a strategy and chunk size, there are two main considerations: Smaller chunk sizes lead to better load balancing, but more granular parallelism, which increases overhead. 
+  The strategy may be specified as a clause or chosen at runtime. The static strategy works best when each iteration performs the same amount of work and the number of threads evenly divides the number of iterations. Otherwise, the strategy can be chosen experimentally. Meanwhile, small chunk sizes lead to better load balancing, whereas large chunk sizes lead to coarser parallelism and hence less overhead.
 
 
 \section{Loop-Carried Dependencies}
 
-  The dependency analysis described earlier can be extended to handle the case of loops. There are two main goals: firstly, to determine whether a loop can be parallized as-is, and secondly, if not, to find a transformation which allows it to be parallelized efficiently.
-
-      \inputcode[firstline=6,lastline=15,gobble=2]{c}{src/lcd.c}
-      \inputcode[firstline=6,lastline=15,gobble=2]{c}{src/lcdbroken.c} 
-
-  A loop may be parallelized if there are no dependencies between statements in different iterations, known as \emph{loop-carried dependencies}. There is a simple heuristic: Could one implement the loop using the \mintinline{c}{map()} function
+  The dependency analysis described earlier can be extended to handle the case of loops. There are two main goals: firstly, to determine whether a loop can be parallized as-is, and secondly, if not, to find a transformation which allows it to be parallelized efficiently. A loop may be parallelized if there are no dependencies between statements in different iterations, known as \emph{loop-carried dependencies}. One simple heuristic is whether the loop can be easily rewritten using the \mintinline{c}{map()} function:
 
         \begin{ccode}[]
         {haskell}
-        map :: (x -> y) -> [x] -> [y]
-      \end{ccode}
+        map :: (x -> y) -> [x] -> [y]\end{ccode}
 
+If the loop has carried dependencies, it may be helpful to apply certain loop transformations. One technique is \emph{loop splitting}, which breaks a loop into two loops, one following the other. This ensures that every statement within the first loop executes before every statement in the second. A similar technique is \emph{loop alignment}, which shifts which piece of data gets updated on each iteration. Both of these techniques can remove dependencies which are accidental to the serial implementation but not fundamental to the underlying algorithm.
 
-  If so, the loop can be parallelized as-is. If not, it may be possible to apply certain loop transformations.
-
-  One useful technique is \emph{loop splitting}, which breaks a loop into two loops, one following the other. 
-
-  Another useful technique is \emph{loop alignment}. Loop alignment reorganizes 
-
-  With nested loops, there is the possibility of \emph{loop interchange}, where the nesting order is rearranged. There are two goals which must be considered: to keep loop-carried dependencies within each thread (so that they run sequentially and hence correctly), and to assign each thread as much work as possible for each iteration (to eliminate overhead). If the loop nest is two deep, there are four possible choices. The following example computes the sum of all rows in a matrix.
+  With nested loops, there is the possibility of \emph{interchanging} the nesting order, which is a powerful tool for exposing parallelism when the previous techniques fail. The programmer must make two choices: the new nesting order, and which loop level gets parallelized. There are two goals: to keep loop-carried dependencies within each thread (so that they run sequentially and hence correctly), and to assign each thread as much work as possible for each iteration (to eliminate overhead). The following example compares different options for computing the sum of all rows in a matrix.
 
       \inputcode[firstline=6,lastline=15,gobble=2]{c}{src/lcd.c}
       \inputcode[firstline=6,lastline=16,gobble=2]{c}{src/lcd2.c}
@@ -401,18 +363,15 @@ While \emph{embarrassingly parallel} loops fit the pattern used by the \mintinli
 
       \begin{ccode}[]
         {haskell}
-        map :: (x -> y) -> [x] -> [y]
-        reduce :: (a -> x -> a) -> a -> [x] -> a
-      \end{ccode}
+        reduce :: (a -> x -> a) -> a -> [x] -> a\end{ccode}
 
-Although a reduction is practically the definition of a loop-carried dependence, it may nonetheless be parallelized as long as the reduction operation is associative, $(a \circ b) \circ c = a \circ (b \circ c)$. Note that floating-point operations are often close to -- but in general not -- associative, which means that a parallelized code will return slightly different values than the sequential version. Making this assumption effectively constrains the type signature of the reduction to: 
+Although a reduction is practically the definition of a loop-carried dependence, it may nonetheless be parallelized as long as the reduction operation is associative, $(a \circ b) \circ c = a \circ (b \circ c)$. (Be aware that floating-point operations are close to -- but in general not -- associative, which means that a parallelized code will return results with slightly different rounding errors.) Assuming associativity constrains the type signature of the reduction to: 
 
       \begin{ccode}[]
         {haskell}
-        reduce' :: (a -> a -> a) -> a -> [a] -> a
-      \end{ccode}
+        reduce' :: (a -> a -> a) -> a -> [a] -> a\end{ccode}
 
-By assuming associativity, the sequence may be broken into chunks and each chunk may be processed independently using a generic initial value; this part can be done entirely in parallel. Afterwards, the accumulators for each chunk must be combined using the same reduction operation; this part must be done sequentially. By making the chunk size as large as possible, the parallel fraction of work remains high. This can be implemented using the constructs already introduced: each thread is assigned a subset of the loop iterations and then the local totals are combined using a critical section.
+This lets the sequence be broken into chunks that may be processed in parallel using a generic initial value. Afterwards, the accumulators for each chunk must be combined using the same reduction operation; this part must be done sequentially. By making the chunk size large, however, the parallel fraction of work remains high. This can be implemented using the constructs already introduced: each thread is assigned a subset of the loop iterations and then the local totals are combined using a critical section.
 
 \begin{ccode}[]
 {c}
@@ -441,8 +400,7 @@ OpenMP can be used to parallelize some of the computation-intensive loops of a L
 
 This technique stands in marked contrast to the traditional incompressible fluid dynamics techniques, which are based on the Navier-Stokes equations and model the macro-level properties explicitly. LBM has a number of disadvantages in comparison, such as a speed of sound which is coupled to the lattice size, and needing very small timestep sizes for large Mach numbers. However, it has one key advantage: it is highly parallelizable and hence can be scaled to very large problem sizes or run in real-time on a GPU.
 
-The data model used by a basic LBM code is as follows. The domain is represented as a 2D array of cells. Each cell contains a distribution of \emph{fictitious particles} moving in different lattice directions. For a 2D simulation, the particles may flow into any of the 8 neighbors, or stay in place. Thus, each cell contains a vector of 9 floats, each of which contains the mass fraction moving in one direction. The macroscopic velocities and densities are stored in separate 2D arrays of floats of the same size. While 
-most cells contain fluid, some contain a rigid obstacle whereas others are used to establish boundary conditions such as inflow and outflow. This is represented by another 2D array containing an enum denoting cell type, called the \emph{flag field}.
+The data model used by a basic LBM code is as follows. The domain is represented as a 2D array of cells. Each cell contains a distribution of \emph{fictitious particles} moving in different lattice directions. For a 2D simulation, the particles may flow into any of the 8 neighbors, or stay in place. (This is called D2Q9 in literature.) Each cell contains a vector of 9 floats, each of which contains the mass fraction moving in one direction. The macroscopic velocities and densities are stored in separate 2D arrays of floats of the same size. While most cells contain fluid, some contain a rigid obstacle, and others establish boundary conditions such as inflow and outflow. This is represented by another 2D array containing an enum denoting cell type, called the \emph{flag field}.
 
 The LBM timestep update rewrites the grid of fictitious particles just like a cellular automaton, but there are additional complications necessary to handle obstacles and boundary conditions. The algorithm always starts with and finishes with a valid particle field. The first step is to perform the collision update, which rearranges the particle distributions inside each cell according to a physical model of an elastic collision. Obstacle cells have their particle distributions reset to zero. The next step is streaming, which examines each pair of adjacent cells and swaps the fictitious particle values flowing from one to the other. After the streaming step has taken place, it is necessary to perform one more pass over the spatial domain to re-establish boundary conditions, including \emph{bouncing back} particles which had been streamed into obstacle cells. Finally, the macroscopic quantities may be calculated from the particle distributions.
 
@@ -450,7 +408,7 @@ Several of the aforementioned steps are embarrassingly parallel, and are corresp
 
 \begin{ccode}[]
 {c}
-        #pragma omp parallel for schedule(dynamic)
+        #pragma omp parallel for schedule(dynamic) collapse(2)
         for (int y = 0; y < height; y++) {
           for (int x = 0; x < width; x++) {
             Cell &cell = particledist.value(x,y);
@@ -460,17 +418,27 @@ Several of the aforementioned steps are embarrassingly parallel, and are corresp
         }
 \end{ccode}
 
-The streaming step presents an additional complication. Because the new values of each cell depend on the values of their neighbors, there is a write-after-read dependency between cells. There are three main approaches to overcoming this. The first approach is to subdivide the domain into smaller regions, stream each region in a separate thread, and then handle the streaming between subregions afterwards. This approach is identical to the case of distributed-memory parallelization, for example with MPI, and the main downside is the increase in implementation complexity. If this approach is taken, it makes more sense to use MPI instead of OpenMP. MPI-3 can transparently take advantage of shared memory, and unlike OpenMP it scales to many processors.
+The streaming step presents an additional complication. Because the new values of each cell depend on the values of their neighbors, there is a write-after-read dependency between cells. There are three possible approaches to overcoming this. The first approach is to subdivide the domain into smaller regions, handle each region in a separate thread, and then handle the streaming between subregions afterwards. This approach is identical to the case of distributed-memory parallelization, for example with MPI, and the main downside is the increase in implementation complexity. If this approach is taken, it makes more sense to use MPI instead of OpenMP. MPI-3 can transparently take advantage of shared memory, and unlike OpenMP it scales to many processors.
 
 The second, simpler approach is based on graph coloring: particles that are moving in different directions do not affect each other. Thus, one may parallelize streaming across the 8 different directions of the distribution vector. This loop is normally nested inside the loops over all cells; to increase granularity it should be interchanged so that it is the outermost. There are two downsides. Firstly, this yields a maximum speedup of 8. More significantly, interchanging the loops dramatically increases the memory movement because the temporally local values now occupy separate cache lines. Although one could remedy this by turning the data structure inside-out, doing so would dramatically increase the memory movement of the collision step for similar reasons. 
 
-The best approach is simpler yet. A write-after-read dependency can usually be resolved by moving the write someplace else. By maintaining separate buffers for the old and new cell values, the program is guaranteed to always read the correct (old) value and the writes no longer interfere. The tradeoff is that this requires twice the memory. This approach also allows the boundary condition application to be parallelized, which is significantly more irregular due to the arbitrary obstacle placement.
+The best approach is simpler yet. A write-after-read dependency can usually be resolved by moving the write someplace else. By maintaining separate buffers for the old and new cell values, the program is guaranteed to always read the correct (old) value and the writes no longer interfere. The tradeoff is that this requires twice the memory. Unlike the graph coloring approach, this also allows the boundary condition application to be parallelized, which is significantly more irregular due to the arbitrary obstacle placement.
 
-All of the major compute kernels of the basic Lattice Boltzmann method can be parallelized using only \texttt{parallel for}. The use of dynamic scheduling allows for better load balancing particularly as the number of grid cells grow large. The use of the \texttt{collapse} clause tells OpenMP to parallelize across all spatial dimensions rather simply the outermost, exposing even more parallelism. However, this has consequences: with dynamic scheduling, the threads must pop work off of a hidden queue in a synchronized manner. As the number of cells and the number of threads increases, Amdahl's Law implies that this overhead eventually saturates the speedup. The impact from increasing the number of cells may be ameliorated by increasing the chunk size, but the impact from increasing the number of threads is unavoidable. As a result, LBM scales well as the problem size increases along with the number of cores (\emph{weak scaling}), but scales less well when the problem size stays constant while the number of cores increases (\emph{strong scaling}). 
+All of the major compute kernels of the basic Lattice Boltzmann method can be parallelized using only \texttt{parallel for}. The use of dynamic scheduling allows for better load balancing particularly as the number of grid cells grow large. The use of the \texttt{collapse} clause tells OpenMP to parallelize across both spatial dimensions rather simply the outermost. However, decreasing the parallelism granularity has consequences. With dynamic scheduling, the threads must pop work off of a hidden queue in a synchronized manner. As the number of cells and the number of threads increases, Amdahl's Law implies that this overhead eventually saturates the speedup. The impact from increasing the number of cells may be ameliorated by increasing the chunk size, but the impact from increasing the number of threads is unavoidable. As a result, LBM scales very well as the problem size increases along with the number of cores (\emph{weak scaling}), but scales somewhat less well when the problem size stays constant while the number of cores increases (\emph{strong scaling}). 
 
 \section{Conclusion}
 
+This paper provided a whirlwind introduction to parallel programming using OpenMP with an emphasis on numerical code. To go further, there are several options. LLNL \cite{LLNL} provides an OpenMP tutorial which goes into much greater depth but still remains concise. On the other hand, Divarkar et al \cite{Viswanath:2017:SPC:3152599} provide a much broader introduction to scientific computing which explore a variety of low-level programming techniques and relate their effectiveness back to computer architecture considerations. Finally, the OpenMP committee itself \cite{OMP} provides a variety of helpful resources.
 
+OpenMP goes well beyond the functionality discussed here. The most important omission is \emph{tasking}, which overcomes the limitations of requiring a finite number of sections or a known number of loop iterations. It allows the programmer to specify tasks, optionally dependent on other tasks, which get dynamically processed by a team of threads via a task queue. This is particularly useful for parallelizing recursive algorithms. Its main downsides are that it is more complex for the programmer to reason about, and harder to obtain a good speedup in practice.
+
+The newer versions of OpenMP also support heterogeneous systems (e.g. offloading work to a GPU or other accelerator), thread affinity (for non-cache coherent multicore processors), and SIMD directives (to mix instruction-level parallelism with thread-level parallelism in a unified way). These features can provide further refinements to codes which have been parallelized using the basic techniques outlined here.
+
+
+\bibliographystyle{IEEEtran}
+% argument is your BibTeX string definitions and bibliography database(s)
+\bibliography{IEEEabrv,references}
+\newpage
 
 
 \end{document}
